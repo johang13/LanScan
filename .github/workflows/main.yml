@@ -26,11 +26,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Get version from .csproj
-        id: get_version
-        run: echo "VERSION=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" **/LanScan.csproj)" >> $GITHUB_ENV
-
-
       - name: Check if version already exists on NuGet
         id: check_nuget
         run: |
