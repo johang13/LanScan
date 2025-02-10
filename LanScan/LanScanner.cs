@@ -8,7 +8,7 @@ namespace LanScan;
 public class LanScanner
 {
 
-    public async Task<ConcurrentBag<IPAddress>> ScanNetwork()
+    public async Task<List<IPAddress>> ScanNetwork()
     {
         ConcurrentBag<IPAddress> addresses = new ConcurrentBag<IPAddress>();
         var local = GetLocalIPAddress() ?? throw new Exception("Error retrieving local IP address.");
@@ -29,7 +29,7 @@ public class LanScanner
 
         await Task.WhenAll(pingTasks);
 
-        return addresses;
+        return addresses.ToList();
     }
 
     private async Task PingDevice(IPAddress address, ConcurrentBag<IPAddress> ips)
