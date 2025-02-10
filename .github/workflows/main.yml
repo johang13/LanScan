@@ -28,7 +28,8 @@ jobs:
 
       - name: Get version from .csproj
         id: get_version
-        run: echo "VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' **/*.csproj)" >> $GITHUB_ENV
+        run: echo "VERSION=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" **/LanScan.csproj)" >> $GITHUB_ENV
+
 
       - name: Check if version already exists on NuGet
         id: check_nuget
@@ -40,10 +41,10 @@ jobs:
           fi
 
       - name: Build project
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build LanScan/LanScan.csproj --configuration Release --no-restore
 
       - name: Pack NuGet package
-        run: dotnet pack --configuration Release --no-build --output .
+        run: dotnet pack LanScan/LanScan.csproj --configuration Release --no-build --output .
 
       - name: Publish to NuGet
         run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
