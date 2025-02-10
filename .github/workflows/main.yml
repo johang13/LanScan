@@ -26,15 +26,6 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Check if version already exists on NuGet
-        id: check_nuget
-        run: |
-          RESPONSE=$(curl -sL "https://api.nuget.org/v3-flatcontainer/YOUR_PACKAGE_NAME/index.json" | grep -o "$VERSION" || true)
-          if [ -n "$RESPONSE" ]; then
-            echo "Version $VERSION already exists on NuGet. Skipping publish."
-            exit 0
-          fi
-
       - name: Build project
         run: dotnet build LanScan/LanScan.csproj --configuration Release --no-restore
 
@@ -42,4 +33,4 @@ jobs:
         run: dotnet pack LanScan/LanScan.csproj --configuration Release --no-build --output .
 
       - name: Publish to NuGet
-        run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
+        run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_APIKEY }} --skip-duplicate
