@@ -1,61 +1,49 @@
-name: publish
+name: Publish NuGet Package
+
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - master
   release:
     types:
       - published
 
-env:
-  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
-  DOTNET_NOLOGO: true
-  NuGetDirectory: ${{ github.workspace}}/nuget
-
-defaults:
-  run:
-    shell: pwsh
-
+permissions:
+  contents: read
 
 jobs:
-  create_nuget:
+  publish:
+    name: Build and Publish NuGet
     runs-on: ubuntu-latest
+
     steps:
-    
-    - uses: actions/checkout@v3
-      with:
-        fetch_depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-
-    - run: dotnet pack LanScan/LanScan.csproj --configuration Release --output ${{ env.NuGetDirectory }}
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: nuget
-        if-no-files-found: error
-        retention-days: 7
-        path: ${{ env.NuGetDirectory }}/*.nupkg
-        
-  deploy:
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    needs: [ create_nuget ]
-    steps:
-    
-      - uses: actions/download-artifact@v4
-        with:
-          name: nuget
-          path: ${{ env.NuGetDirectory }}
-
-
-      - name: Setup .NET Core
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
 
-      # Publish all NuGet packages to NuGet.org
-      # Use --skip-duplicate to prevent errors if a package with the same version already exists.
-      # If you retry a failed workflow, already published packages will be skipped without error.
-      - name: Publish NuGet package
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Get version from .csproj
+        id: get_version
+        run: echo "VERSION=$(grep -oPm1 '(?<=<Version>)[^<]+' **/*.csproj)" >> $GITHUB_ENV
+
+      - name: Check if version already exists on NuGet
+        id: check_nuget
         run: |
-          foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
-              dotnet nuget push $file --api-key "${{ secrets.NUGET_APIKEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
-          }
+          RESPONSE=$(curl -sL "https://api.nuget.org/v3-flatcontainer/YOUR_PACKAGE_NAME/index.json" | grep -o "$VERSION" || true)
+          if [ -n "$RESPONSE" ]; then
+            echo "Version $VERSION already exists on NuGet. Skipping publish."
+            exit 0
+          fi
+
+      - name: Build project
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Pack NuGet package
+        run: dotnet pack --configuration Release --no-build --output .
+
+      - name: Publish to NuGet
+        run: dotnet nuget push *.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
